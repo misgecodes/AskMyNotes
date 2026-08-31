@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-
-from model.answer import Answer
+from schemas.retrieve_query import ReformulatedQuery
 from type.graph_state import GraphState
 from langchain_community.vectorstores import Chroma
 
@@ -33,3 +32,13 @@ def retrieve(state: GraphState, vectorstore: Chroma) -> dict:
     state["answer"] = response.answer
     state["confidence"] = response.confidence
     return {"chunks": results}
+
+
+
+def reformulate(state: GraphState) -> dict:
+    load_dotenv()
+    llm = ChatOpenAI(model="gpt-4.1-mini")
+    
+    structured_llm = llm.with_structured_output(ReformulatedQuery)
+    response = structured_llm.invoke(f"""User asked '{state['question']}', got low-confidence answer '{state['answer']}'. Rewrite the question to help retrieval find better info.""")
+    return {"question": response.new_query, "retries": state["retries"] + 1}
